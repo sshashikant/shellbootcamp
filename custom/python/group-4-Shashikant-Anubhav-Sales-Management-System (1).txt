@@ -1,0 +1,142 @@
+'''
+You are tasked with building a command-line sales management system in Python. The program should allow users to:
+1. Add a new product.
+2. List all products.
+3. Add a new customer.
+4. List all customers.
+5. Create a new sales order.
+6. List all sales orders.
+7. Quit the program.
+'''
+
+#importing numpy library for random values
+import numpy as np
+
+#creating classes according to given problem statement
+class Product:
+    def __init__(self, pId, name, price):
+        self.pId = pId
+        self.name = name
+        self.price = price
+        
+class Customer:
+    def __init__(self, cId, name, email):
+        self.cId = cId
+        self.name = name
+        self.email = email
+        
+class SalesOrder:
+    def __init__(self, customer, products):
+        self.customer = customer
+        self.products = products
+        
+#creating lists to store class objects
+products = []
+customers = []
+sales_order = []
+
+#function to create a new product object and add it to list
+def add_product():
+    name = input("Enter product name: ")
+    price = float(input("Enter product price: "))
+    
+    #using random function to generate id
+    pId = np.random.randint(1000, 9999)
+    product = Product(pId, name, price)
+    products.append(product)
+    print("Product added successfully!")
+    
+#function to print all products
+def list_products():
+    for product in products:
+        print(f"Product Id: {product.pId}, Product Name: {product.name}, Price: {product.price}")
+        
+#function to create a new customer object and add it to list
+def add_customer():
+    name = input("Enter customer name: ")
+    email = input("Enter customer email: ")
+    
+    #using random function to generate id
+    cId = np.random.randint(10000, 99999)
+    customer = Customer(cId, name, email)
+    customers.append(customer)
+    print("Customer added successfully!")
+    
+#function to print all customers
+def list_customers():
+    for customer in customers:
+        print(f"Customer Id: {customer.cId}, Customer Name: {customer.name}, Email: {customer.email}")
+
+#function to create a new sales order object and add it to list        
+def create_sales_order():
+    customer_name = input("Enter customer name: ")
+    customer = next((c for c in customers if c.name == customer_name), None)
+    
+    #sales order will only be created if both customer and product is present in the program
+    if customer:
+        order_products = []
+        #a list of product can be put into one sales order
+        while True:
+            product_name = input("Enter product name (or 'done' to finish): ")
+            if product_name == 'done':
+                break
+            product = next((p for p in products if p.name == product_name), None)
+            if product:
+                order_products.append(product)
+            else:
+                print("Product not found.")
+    
+        if order_products:
+            salesorder = SalesOrder(customer, order_products)
+            sales_order.append(salesorder)
+            print("Sales order created successfully!")
+        else:
+            print("No products added to the sales order.")
+        
+    else:
+        print("Customer not found.")
+
+#function to list all sales orders
+def list_sales_orders():
+    for i, order in enumerate(sales_order):
+        print(f"Order {i+1}: Customer: {order.customer.name}")
+        print("Products:")
+        for product in order.products:
+            print(f" Name: {product.name}, Price: {product.price}")
+        print()
+        
+#main function to run the program
+def main():
+    while True:
+        print("\n-----Sales Management System-----:")
+        print("1. Add a new product")
+        print("2. List all products")
+        print("3. Add a new customer")
+        print("4. List all customers")
+        print("5. Create a new sales order")
+        print("6. List all sales orders")
+        print("7. Quit")
+        
+        #taking user input
+        choice = input("Enter your choice: ")
+        
+        if choice == '1':
+            add_product()
+        elif choice == '2':
+            list_products()
+        elif choice == '3':
+            add_customer()
+        elif choice == '4':
+            list_customers()
+        elif choice == '5':
+            create_sales_order()
+        elif choice == '6':
+            list_sales_orders()
+        elif choice == '7':
+            break
+        else:
+            print("Invalid choice. Please try again.")
+
+#calling the main function            
+if __name__ == "__main__":
+    main()
