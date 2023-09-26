@@ -1,0 +1,145 @@
+--calling a file from our storage
+SELECT
+    TOP 100 *
+FROM
+    OPENROWSET(
+        BULK 'https://datawaterbody.dfs.core.windows.net/waterbodyfiles/tempdir/employee.csv',
+        FORMAT = 'CSV',
+        PARSER_VERSION = '2.0',
+        firstrow = 2
+    ) WITH(
+        eid NVARCHAR(10) 1,
+        ename NVARCHAR(30) 2,
+        eage NVARCHAR(10) 3,
+        esalary NVARCHAR(20) 4
+    ) AS [result]
+
+
+-- calling file from external source
+SELECT
+    TOP 100 *
+FROM
+    OPENROWSET(
+        BULK 'https://pandemicdatalake.blob.core.windows.net/public/curated/covid-19/ecdc_cases/latest/ecdc_cases.csv',
+        FORMAT = 'CSV',
+        PARSER_VERSION = '2.0',
+        FIRSTROW = 2
+    ) WITH (
+        date_rep date 1,
+        [year] int 4,
+        cases int 5,
+        geo_id char(5) 8
+    ) AS [Result]
+
+
+--creating a temp db as we can't work on master directly
+CREATE DATABASE tempdbsqlpool
+
+--shorten the external url by adding this as a data source
+CREATE EXTERNAL DATA SOURCE Covid
+WITH (
+    LOCATION = 'https://pandemicdatalake.blob.core.windows.net/public/curated/covid-19/ecdc_cases'
+)
+
+
+--getting external data from created data source
+SELECT
+    TOP 100 *
+FROM
+    OPENROWSET(
+        BULK 'latest/ecdc_cases.csv',
+        DATA_SOURCE = 'Covid',
+        FORMAT = 'CSV',
+        PARSER_VERSION = '2.0',
+        FIRSTROW = 2
+    ) WITH (
+        date_rep date 1,
+        [year] int 4,
+        cases int 5,
+        geo_id char(5) 8
+    ) AS [Result]
+
+-- working with parquet files
+SELECT
+    TOP 10 *
+FROM
+    OPENROWSET(
+        BULK 'https://pandemicdatalake.blob.core.windows.net/public/curated/covid-19/ecdc_cases/latest/ecdc_cases.parquet',
+        FORMAT = 'parquet'
+    ) AS rows
+
+    -- parquet files using external data source
+    SELECT
+        TOP 10 *
+    FROM
+        OPENROWSET(
+            BULK 'latest/ecdc_cases.parquet',
+            DATA_SOURCE = 'Covid',
+            FORMAT = 'parquet'
+        ) AS rows
+
+-- working with json
+SELECT
+    TOP 10 *
+FROM
+    OPENROWSET(
+        BULK 'https://pandemicdatalake.blob.core.windows.net/public/curated/covid-19/ecdc_cases/latest/ecdc_cases.jsonl',
+        FORMAT = 'csv',
+        FIELDTERMINATOR = '0x0b',
+        FIELDQUOTE = '0x0b'
+    ) WITH (
+        doc NVARCHAR(MAX)
+    ) AS rows
+    
+
+-- Polybase 
+-- creating master key
+CREATE MASTER KEY
+
+-- create database scoped credentials
+CREATE DATABASE SCOPED CREDENTIAL [asasql]
+WITH IDENTITY = 'SHARED ACCESS SIGNATURE',
+SECRET = '?sv=2022-11-02&ss=bfqt&srt=sco&sp=rwdlacupyx&se=2023-09-12T16:12:05Z&st=2023-09-12T08:12:05Z&spr=https&sig=2ppJmnxRgOLZfdbffXrIjQec%2B2jacEaBbHlAVJ2x4%2FU%3D'
+
+-- CREATE an external data source
+CREATE EXTERNAL DATA SOURCE tempsrc
+WITH (
+    LOCATION = 'https://datawaterbody.blob.core.windows.net',
+    CREDENTIAL = [asasql]
+)
+
+-- creating external file format
+CREATE EXTERNAL FILE FORMAT QuotedCSVWithHeader
+WITH(
+    FORMAT_TYPE = DELIMITEDTEXT,
+    FORMAT_OPTIONS(
+        FIELD_TERMINATOR = ',', 
+        STRING_DELIMITER='"',
+        FIRST_ROW = 2
+    )
+)
+
+-- Creating external table
+CREATE EXTERNAL TABLE employeeSynapse(
+    eid int,
+    ename VARCHAR(25),
+    eage int,
+    esalary int
+) WITH(
+    LOCATION = 'waterbodyfiles/tempdir/employee.csv',
+    DATA_SOURCE = tempsrc,
+    FILE_FORMAT = QuotedCSVWithHeader
+)
+
+-- Testing the table
+SELECT * FROM employeeSynapse
+
+--DROP EXTERNAL TABLE employeeSynapse
+
+-- create view using sql query
+CREATE VIEW empView
+AS 
+SELECT * FROM employeeSynapse
+
+-- reading data from view
+SELECT * FROM empView
